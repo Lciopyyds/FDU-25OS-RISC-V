@@ -106,23 +106,23 @@ struct kmem_cache {
 
 初始化成功：
 
-![image-20250924102709630](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20250924102709630.png)
+![01](./experiment_report/images/image-20250924102709630.png)
 
 单进程仅创建/销毁管道：
 
-![image-20250924102800330](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20250924102800330.png)
+![02](./experiment_report/images/image-20250924102800330.png)
 
 单进程带 I/O 的吞吐：
 
-![image-20250924102852472](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20250924102852472.png)
+![03](./experiment_report/images/image-20250924102852472.png)
 
 三进程并发仅创建/销毁：
 
-![image-20250924102954584](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20250924102954584.png)
+![04](./experiment_report/images/image-20250924102954584.png)
 
 三进程并发+I/O：
 
-![image-20250924103058679](C:\Users\lenovo\AppData\Roaming\Typora\typora-user-images\image-20250924103058679.png)
+![05](./experiment_report/images/image-20250924103058679.png)
 
 实验结果表明：slab 分配器成功初始化并接管小块分配（见启动日志）。在仅创建/销毁管道的场景下，单进程达到 **31.3k ops/s**（`bench -n 20000`，64 ticks），带 64B I/O 时为 **13.9k ops/s**，吞吐约 **0.94 MB/s**（`bench -io -n 10000`）。并发 3 进程仅建/销达到 **39.7k ops/s**（`bench -p 3 -n 60000`），有一定扩展但未线性，主要受全局锁与调度开销影响；并发 3 进程且每次 I/O 128B 时，总体 **15.7k ops/s**（`bench -p 3 -n 30000 -io -msize 128`）。整体看，slab 路径在保证稳定吞吐的同时显著改善小对象内存使用（pipe 典型场景每页可容纳多个对象），达到了预期目标。
 
