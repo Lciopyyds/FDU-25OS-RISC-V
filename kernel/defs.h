@@ -181,5 +181,22 @@ void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);
 void            virtio_disk_intr(void);
 
+
+void pipe_cache_init(void);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+
+struct kmem_cache;
+struct kmem_cache *kmem_cache_create(const char *name, uint objsize,
+                                     void (*ctor)(void *), void (*dtor)(void *),
+                                     uint align);
+void kmem_cache_destroy(struct kmem_cache *c);
+void *kmem_cache_alloc(struct kmem_cache *c);
+void  kmem_cache_free (struct kmem_cache *c, void *obj);
+
+void  kmalloc_init(void);
+void *kmalloc(uint size);
+void  kfree_slab(void *p);
+void  kmalloc_stats(void);

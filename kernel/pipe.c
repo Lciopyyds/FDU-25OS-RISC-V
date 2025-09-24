@@ -1,3 +1,4 @@
+// kernel/pipe.c — slab 版
 #include "types.h"
 #include "riscv.h"
 #include "defs.h"
@@ -7,6 +8,7 @@
 #include "fs.h"
 #include "sleeplock.h"
 #include "file.h"
+#include "slab.h"    // ★ 新增：使用 slab
 
 #define PIPESIZE 512
 
@@ -19,6 +21,17 @@ struct pipe {
   int writeopen;  // write fd is still open
 };
 
+// ★ 新增：pipe 专用 slab cache
+static struct kmem_cache *pipe_cache;
+
+void
+pipe_cache_init(void)
+{
+  pipe_cache = kmem_cache_create("pipe", sizeof(struct pipe), 0, 0, 16);
+  if(pipe_cache == 0)
+    panic("pipe_cache_init");
+}
+
 int
 pipealloc(struct file **f0, struct file **f1)
 {
@@ -28,17 +41,22 @@ pipealloc(struct file **f0, struct file **f1)
   *f0 = *f1 = 0;
   if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
     goto bad;
-  if((pi = (struct pipe*)kalloc()) == 0)
+
+  // 原来是 kalloc() → 改用 slab 分配
+  if((pi = (struct pipe*)kmem_cache_alloc(pipe_cache)) == 0)
     goto bad;
+
   pi->readopen = 1;
   pi->writeopen = 1;
   pi->nwrite = 0;
   pi->nread = 0;
   initlock(&pi->lock, "pipe");
+
   (*f0)->type = FD_PIPE;
   (*f0)->readable = 1;
   (*f0)->writable = 0;
   (*f0)->pipe = pi;
+
   (*f1)->type = FD_PIPE;
   (*f1)->readable = 0;
   (*f1)->writable = 1;
@@ -47,7 +65,7 @@ pipealloc(struct file **f0, struct file **f1)
 
  bad:
   if(pi)
-    kfree((char*)pi);
+    kmem_cache_free(pipe_cache, pi);  // 原 kfree → slab 释放
   if(*f0)
     fileclose(*f0);
   if(*f1)
@@ -68,7 +86,7 @@ pipeclose(struct pipe *pi, int writable)
   }
   if(pi->readopen == 0 && pi->writeopen == 0){
     release(&pi->lock);
-    kfree((char*)pi);
+    kmem_cache_free(pipe_cache, pi);  // 原 kfree → slab 释放
   } else
     release(&pi->lock);
 }
